@@ -3,7 +3,7 @@ import mongoose from "mongoose"
 import dotenv from "dotenv"
 dotenv.config()
 import {nanoid} from "nanoid"
-import {createBooking, getBooking, deleteBooking, updateBooking, getBookingsInIntervall} from "./model/model.js"
+import {getBooking, createBooking, updateBooking, deleteBooking, getBookingsInIntervall} from "./model/model.js"
 import {getAvailibleLanes} from "./utils/utils.js"
 const app = express()
 const PORT = 3000
@@ -16,8 +16,8 @@ app.get("/api/booking/:id", async (req, res) => {
         if(!result) {
             return res.status(400).json({success: false, msg: "Booking number does not exist"})
         }
-        result.datetime = new Date(result.datetime).toLocaleString("sv",
-            {dateStyle: "short", timeStyle: "short"})
+        result.datetime = new Date(result.datetime)
+            .toLocaleString("sv", {dateStyle: "short", timeStyle: "short"})
         res.status(200).json({success: true, data: result})
     } catch (err) {
         res.status(500).json({success: false, msg: err.message})
@@ -25,11 +25,11 @@ app.get("/api/booking/:id", async (req, res) => {
 })
 
 app.post("/api/booking/create", async (req, res) => {
-    const lanes = await getAvailibleLanes(req.body.datetime)
-    if(lanes.length < req.body.laneCount) {
+    const freeLanes = await getAvailibleLanes(req.body.datetime)
+    if(freeLanes.length < req.body.laneCount) {
         return res.status(400).json({success:false, msg: "Not enough free lanes at that time."})
     }
-    req.body.laneNumbers = lanes.slice(0, req.body.laneCount)
+    req.body.laneNumbers = freeLanes.slice(0, req.body.laneCount)
     req.body.price = req.body.laneCount * 100 + req.body.personCount * 120
     req.body.bookingNumber = nanoid() 
     try {
@@ -46,16 +46,16 @@ app.put("/api/booking/change/:id", async (req, res) => {
         return res.status(400).json({success: false, msg: "Booking number does not exist"})
     }
 
-    let lanes = await getAvailibleLanes(req.body.datetime)
+    let freeLanes = await getAvailibleLanes(req.body.datetime)
     if(booking.datetime === req.body.datetime) {
-        lanes = booking.laneNumbers.concat(lanes)
+        freeLanes = booking.laneNumbers.concat(freeLanes)
     }
 
-    if(lanes.length < req.body.laneCount) {
+    if(freeLanes.length < req.body.laneCount) {
         return res.status(400).json({success:false, msg: "Not enough free lanes at that time."})
     }
 
-    req.body.laneNumbers = lanes.slice(0, req.body.laneCount)
+    req.body.laneNumbers = freeLanes.slice(0, req.body.laneCount)
     req.body.bookingNumber = req.params.id
     req.body.price = req.body.laneCount * 100 + req.body.personCount * 120
     try {
