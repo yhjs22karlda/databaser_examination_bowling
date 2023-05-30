@@ -8,7 +8,7 @@ export function getBookedLanesAtTime(datetime) {
     return Booking.find({datetime}, "laneNumbers -_id")
 }
 
-export function getBookingByBookingNr(bookingNumber) {
+export function getBooking(bookingNumber) {
     return Booking.findOne({bookingNumber}, "-_id -__v").lean()
 }
 
@@ -17,8 +17,20 @@ export function deleteBooking(bookingNumber) {
 }
 
 export function updateBooking(bookingNumber, newInfo) {
-    return Booking.findOneAndReplace({bookingNumber}, newInfo, {
-        new: true,
-        runValidators: true
-    }).select('-_id')
+    return Booking.findOneAndReplace(
+        {bookingNumber},
+        newInfo,
+        {new: true, runValidators: true}
+    ).select('-_id')
+}
+
+export function getBookingsInIntervall(start, end) {
+    return Booking.find({
+        $and: [
+            {datetime: {$gte:start}},
+            {datetime: {$lte:end}},
+        ]
+    })
+    .sort({datetime: 1})
+    .select('datetime laneNumbers -_id')
 }

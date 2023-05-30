@@ -3,8 +3,8 @@ import mongoose from "mongoose"
 import dotenv from "dotenv"
 dotenv.config()
 import {nanoid} from "nanoid"
-import { createBooking, getBookingByBookingNr, deleteBooking, updateBooking } from "./model/model.js"
-import { getAvailibleLanes } from "./utils/utils.js"
+import {createBooking, getBooking, deleteBooking, updateBooking, getBookingsInIntervall} from "./model/model.js"
+import {getAvailibleLanes} from "./utils/utils.js"
 const app = express()
 const PORT = 3000
 
@@ -12,7 +12,7 @@ app.use(express.json())
 
 app.get("/api/booking/:id", async (req, res) => {
     try {
-        const result = await getBookingByBookingNr(req.params.id)
+        const result = await getBooking(req.params.id)
         if(!result) {
             return res.status(400).json({success: false, msg: "Booking number does not exist"})
         }
@@ -41,7 +41,7 @@ app.post("/api/booking/create", async (req, res) => {
 })
 
 app.put("/api/booking/change/:id", async (req, res) => {
-    const booking = await getBookingByBookingNr(req.params.id)
+    const booking = await getBooking(req.params.id)
     if(!booking) {
         return res.status(400).json({success: false, msg: "Booking number does not exist"})
     }
@@ -78,8 +78,37 @@ app.delete("/api/booking/delete/:id", async (req, res) => {
     }
 })
 
-app.get("/api/lanes", (req, res) => {
-    res.status(200).json({success:true, msg: "Lanes shown."})
+app.get("/api/lanes", async (req, res) => {
+    if(!req.query.start || !req.query.end) {
+        return res.status(400).json({success: false, msg: "Fill in query intervalls."})
+    }
+    try {
+        const bookings = await getBookingsInIntervall(req.query.start, req.query.end)
+
+        const data = []
+        for(let i = 1; i <= 8; i++) {
+            let laneObj = {}
+            laneObj.bana = i
+            laneObj.bookings = []
+            bookings.forEach(item => {
+                if(item.laneNumbers.includes(i)) {
+                    laneObj.bookings.push(
+                        new Date(item.datetime).toLocaleString("sv",
+                            {dateStyle: "medium", timeStyle: "short"})
+                    )
+                }
+            })
+            data.push(laneObj)
+        }
+        const msg = "Shows lane bookings between " + 
+            new Date(Number(req.query.start))
+            .toLocaleString("sv", {dateStyle: "medium", timeStyle: "short"}) + " and " +
+            new Date(Number(req.query.end))
+            .toLocaleString("sv", {dateStyle: "medium", timeStyle: "short"}) + "."
+        res.status(200).json({success: true, msg, data})
+    } catch (err) {
+        res.status(500).json({success: false, msg: err.message})
+    }
 })
 
 app.use((err, req, res, next) => {
@@ -108,6 +137,13 @@ function addSomeStartBookings() {
         {
             datetime: Date.parse(new Date("2023-07-02T10:00:00+02:00")), // 1688284800000
             email: "user11@example.com",
+            personCount: 3,
+            laneCount: 3,
+            shoeSizes: [45, 40, 38]
+        },
+        {
+            datetime: Date.parse(new Date("2023-07-02T14:00:00+02:00")), // 1688299200000
+            email: "user11@example.com",
             personCount: 2,
             laneCount: 2,
             shoeSizes: [45, 40]
@@ -115,9 +151,9 @@ function addSomeStartBookings() {
         {
             datetime: Date.parse(new Date("2023-07-03T10:00:00+02:00")), // 1688371200000
             email: "user11@example.com",
-            personCount: 2,
-            laneCount: 2,
-            shoeSizes: [45, 40]
+            personCount: 10,
+            laneCount: 5,
+            shoeSizes: [45, 40, 42, 42, 42, 41, 45, 37, 38, 38]
         },
     ]
 
