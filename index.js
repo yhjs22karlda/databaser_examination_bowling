@@ -33,7 +33,10 @@ app.post("/api/booking/create", async (req, res) => {
     req.body.price = req.body.laneCount * 100 + req.body.personCount * 120
     req.body.bookingNumber = nanoid() 
     try {
-        const result = await createBooking(req.body)
+        const result = (await createBooking(req.body)).toObject()
+        result._id = undefined
+        result.__v = undefined
+        result.datetime = new Date(result.datetime).toLocaleString()
         res.status(201).json({success: true, msg: "Booking made.", data: result})
     } catch (err) {
         res.status(500).json({success: false, msg: err.message})
@@ -59,7 +62,8 @@ app.put("/api/booking/change/:id", async (req, res) => {
     req.body.bookingNumber = req.params.id
     req.body.price = req.body.laneCount * 100 + req.body.personCount * 120
     try {
-        const result = await updateBooking(req.params.id, req.body)
+        const result = (await updateBooking(req.params.id, req.body)).toObject()
+        result.datetime = new Date(result.datetime).toLocaleString()
         res.status(201).json({success: true, msg: "Booking changed.", data: result})
     } catch (err) {
         res.status(500).json({success: false, msg: err.message})
@@ -88,7 +92,7 @@ app.get("/api/lanes", async (req, res) => {
         const data = []
         for(let i = 1; i <= 8; i++) {
             let laneObj = {}
-            laneObj.bana = i
+            laneObj.lane = i
             laneObj.bookings = []
             bookings.forEach(item => {
                 if(item.laneNumbers.includes(i)) {
